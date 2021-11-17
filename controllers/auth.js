@@ -61,11 +61,35 @@ exports.login = async (req, res, next) => {
   }
 };
 
-exports.forgotpassword = (req, res, next) => {
-  res.send("Forgot Password Route");
+exports.forgotpassword = async (req, res, next) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      //? you dont want to send "email does not exist as it comprimises security"
+      return next(new ErrorResponse("Email could not be sent", 404));
+    }
+    const resetToken = user.getResetPasswordToken();
+
+    await user.save();
+    //? resetUrl will lead to front end
+    const resetUrl = `http://localhost:3000/passwordreset/${resetToken}`;
+
+    //? clicktracking=off prevents sendgrid api from re-routing to a weird link
+    const message = `
+      <h1>You have requested a password reset</h1>
+      <p>Please go to this link to reset your password</p>
+      <a href=${resetUrl} clicktracking=off>${resetUrl}</a> 
+    `;
+
+    //*
+    try {
+    } catch (error) {}
+  } catch (error) {}
 };
 
-exports.resetpassword = (req, res, next) => {
+exports.resetpassword = async (req, res, next) => {
   res.send("Reset Password Route");
 };
 
