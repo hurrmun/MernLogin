@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const ErrorResponse = require("../utils/errorResponse");
+const sendEmail = require("../utils/sendEmail");
 
 exports.register = async (req, res, next) => {
   const { username, email, password } = req.body;
@@ -83,10 +84,30 @@ exports.forgotpassword = async (req, res, next) => {
       <a href=${resetUrl} clicktracking=off>${resetUrl}</a> 
     `;
 
-    //*
+    //* Send email using sendgrid api and nodemailer
     try {
-    } catch (error) {}
-  } catch (error) {}
+      await sendEmail({
+        to: user.email,
+        subject: "Password reset request",
+        text: message,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: "Email Sent",
+      });
+    } catch (error) {
+      //? important as we dont want the tokens to stay if there is an error
+      user.getResetPasswordToken = undefined;
+      user.getResetPasswordExpire = undefined;
+
+      await user.save();
+
+      return next(new ErrorResponse("Email could not be sent", 500));
+    }
+  } catch (error) {
+    next(error);
+  }
 };
 
 exports.resetpassword = async (req, res, next) => {
