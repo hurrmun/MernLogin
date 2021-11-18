@@ -21,7 +21,7 @@ const RegisterScreen = ({ history }) => {
 
     const config = {
       header: {
-        "Contemt-Type": "application/json",
+        "Content-Type": "application/json",
       },
     };
     if (password !== confirmPassword) {
@@ -34,7 +34,7 @@ const RegisterScreen = ({ history }) => {
     }
 
     try {
-      const { data } = await axios(
+      const { data } = await axios.post(
         "/api/auth/register",
         { username, email, password },
         config
