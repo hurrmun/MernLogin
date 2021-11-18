@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const User = require("../models/User");
 const ErrorResponse = require("../utils/errorResponse");
 const sendEmail = require("../utils/sendEmail");
@@ -39,17 +40,18 @@ exports.login = async (req, res, next) => {
   }
   try {
     const user = await User.findOne({ email }).select("+password");
-
+    // console.log("user", user);
     if (!user) {
       // res.status(404).json({ success: false, error: "Invalid Credentials" });
       return next(new ErrorResponse("Invalid Credentials", 401));
     }
 
-    const isMatch = user.matchPasswords(password);
+    const isMatch = await user.matchPasswords(password);
+    // console.log("isMatch", isMatch);
 
     if (!isMatch) {
       // res.status(404).json({ success: false, error: "Invalid Credentials" });
-      return next(new ErrorResponse("Invalid Credentials", 401));
+      return next(new ErrorResponse("Invalid Credentials (password)", 401));
     }
 
     // res.status(200).json({
@@ -111,7 +113,34 @@ exports.forgotpassword = async (req, res, next) => {
 };
 
 exports.resetpassword = async (req, res, next) => {
-  res.send("Reset Password Route");
+  const resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(req.params.resetToken)
+    .digest("hex");
+
+  try {
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return next(new ErrorResponse("Invalid Reset Token", 400));
+    }
+
+    user.password = req.body.password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      data: "Password reset success",
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 const sendToken = (user, statusCode, res) => {
